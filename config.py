@@ -1,0 +1,3 @@
+# config.py
+ENCRYPTION_KEY = b'IE57vzdTkc4kDqBYont0liTpfbqyVSRxrz-STLkBP0c='
+ENCRYPTED_MASTER_KEY = b'gAAAAABmzfEHdBPUolzvy62ZbxB9ovf64WlVAuuoCbR1xIchJfl1tgbUKoyqrLLwjTJJqw5Xri8QONbmBfw6sofZdsBcoCQ1NoI8CjJmqHQwhv8QU4ljFV8wamb5-dUxC7ASrp-bHbNC'
