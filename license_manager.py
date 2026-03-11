@@ -2,9 +2,15 @@ import requests
 from datetime import datetime, date, timedelta
 from cryptography.fernet import Fernet
 import json
-from config import ENCRYPTED_MASTER_KEY, ENCRYPTION_KEY
 import platform
 import os
+
+try:
+    import streamlit as st
+    ENCRYPTION_KEY = st.secrets["ENCRYPTION_KEY"].encode()
+    ENCRYPTED_MASTER_KEY = st.secrets["ENCRYPTED_MASTER_KEY"].encode()
+except Exception:
+    from config import ENCRYPTED_MASTER_KEY, ENCRYPTION_KEY
 
 class LicenseManager:
     def __init__(self):
