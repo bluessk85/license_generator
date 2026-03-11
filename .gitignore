@@ -1,1 +1,17 @@
- 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.env
+config.py
+
+# VS Code
+.vscode/
+.history
+*.code-workspace
+
+# 운영체제
+.DS_Store
+Thumbs.db 

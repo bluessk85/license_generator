@@ -30,7 +30,21 @@ def main():
         page_icon="🔑",
         layout="centered"
     )
-    
+
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.title("🔒 접근 제한")
+        password = st.text_input("비밀번호를 입력하세요", type="password")
+        if st.button("확인"):
+            if password == "bluessk1985":
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("비밀번호가 틀렸습니다.")
+        return
+
     st.title("블로그 꿀댕이 라이센스 생성기")
     
     # 입력 필드
