@@ -6,11 +6,21 @@ import platform
 import os
 
 try:
-    import streamlit as st
-    ENCRYPTION_KEY = st.secrets["ENCRYPTION_KEY"].encode()
-    ENCRYPTED_MASTER_KEY = st.secrets["ENCRYPTED_MASTER_KEY"].encode()
-except Exception:
-    from config import ENCRYPTED_MASTER_KEY, ENCRYPTION_KEY
+    # 1. Vercel 환경변수 (os.environ) 우선 확인
+    if "ENCRYPTION_KEY" in os.environ and "ENCRYPTED_MASTER_KEY" in os.environ:
+        ENCRYPTION_KEY = os.environ["ENCRYPTION_KEY"].encode()
+        ENCRYPTED_MASTER_KEY = os.environ["ENCRYPTED_MASTER_KEY"].encode()
+    # 2. 로컬 테스트용 config.py 확인
+    else:
+        from config import ENCRYPTED_MASTER_KEY, ENCRYPTION_KEY
+except ImportError:
+    # 3. Streamlit secrets 확인 (하위 호환성 유지)
+    try:
+        import streamlit as st
+        ENCRYPTION_KEY = st.secrets["ENCRYPTION_KEY"].encode()
+        ENCRYPTED_MASTER_KEY = st.secrets["ENCRYPTED_MASTER_KEY"].encode()
+    except Exception:
+        raise Exception("암호화 키를 찾을 수 없습니다. 환경변수나 config.py를 확인하세요.")
 
 class LicenseManager:
     def __init__(self):

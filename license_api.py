@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from license_manager import LicenseManager
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI(
     title="블로그 꿀댕이 라이센스 API",
@@ -23,12 +24,14 @@ app.add_middleware(
 class LicenseRequest(BaseModel):
     user_id: str
     duration: int
+    password: str
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "user_id": "test_user",
-                "duration": 365
+                "duration": 365,
+                "password": "your_password_here"
             }
         }
 
@@ -39,7 +42,7 @@ class LicenseResponse(BaseModel):
     is_valid: bool
     message: str
 
-@app.post("/generate-license", 
+@app.post("/api/generate-license", 
          response_model=LicenseResponse,
          summary="라이센스 생성",
          description="사용자 ID와 기간을 입력받아 라이센스를 생성합니다.")
@@ -51,6 +54,11 @@ async def generate_license(request: LicenseRequest):
     - **duration**: 라이센스 유효 기간(일)
     """
     try:
+        # 비밀번호 검증 (환경변수에 없으면 기본값 사용)
+        admin_password = os.environ.get("ADMIN_PASSWORD", "bluessk1985")
+        if request.password != admin_password:
+            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
+
         license_manager = LicenseManager()
         expiration_date = date.today() + timedelta(days=request.duration)
         
@@ -67,7 +75,7 @@ async def generate_license(request: LicenseRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health", 
+@app.get("/api/health", 
         summary="헬스 체크",
         description="API 서버의 상태를 확인합니다.")
 async def health_check():

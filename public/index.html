@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블로그 꿀댕이 라이센스 발급기</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="glass-panel">
+        <div class="header">
+            <h1>🔑 라이센스 발급기</h1>
+            <p id="subtitle">관리자 인증이 필요합니다</p>
+        </div>
+
+        <div id="alert-box" class="alert"></div>
+
+        <!-- 로그인 섹션 -->
+        <div id="login-section">
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="password">관리자 비밀번호</label>
+                    <input type="password" id="password" class="form-control" placeholder="비밀번호를 입력하세요" required>
+                </div>
+                <button type="submit" class="btn" id="login-btn">
+                    <span class="btn-text">로그인</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+        </div>
+
+        <!-- 라이센스 생성 섹션 -->
+        <div id="generator-section">
+            <form id="generator-form">
+                <div class="form-group">
+                    <label for="user_id">사용자 ID (네이버 아이디)</label>
+                    <input type="text" id="user_id" class="form-control" placeholder="예: bluessk" required>
+                </div>
+                <div class="form-group">
+                    <label for="duration">유효 기간 (일)</label>
+                    <input type="number" id="duration" class="form-control" value="365" min="1" required>
+                </div>
+                <button type="submit" class="btn" id="generate-btn">
+                    <span class="btn-text">라이센스 생성</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+
+            <div id="result-card" class="result-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: #e2e8f0;">발급 결과</h3>
+                
+                <div class="result-grid">
+                    <div class="result-item">
+                        <span class="result-label">사용자 ID</span>
+                        <span class="result-value" id="res-user-id">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">만료일</span>
+                        <span class="result-value" id="res-expiration">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">상태</span>
+                        <span class="result-value">
+                            <span id="res-status" class="status-badge status-valid">유효함</span>
+                        </span>
+                    </div>
+                    <div class="result-item" style="grid-column: span 2;">
+                        <span class="result-label">시스템 메시지</span>
+                        <span class="result-value" id="res-message" style="color: #94a3b8; font-size: 0.85rem;">-</span>
+                    </div>
+                </div>
+
+                <div class="result-item" style="margin-bottom: 1rem;">
+                    <span class="result-label">라이센스 키</span>
+                    <div class="license-key-box" id="res-key"></div>
+                </div>
+
+                <button id="download-btn" class="btn" style="background: rgba(255,255,255,0.1); color: white;">
+                    ⬇️ 라이센스 파일 다운로드
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let savedPassword = '';
+    let currentLicenseData = null;
+
+    const UI = {
+        loginSection: document.getElementById('login-section'),
+        generatorSection: document.getElementById('generator-section'),
+        subtitle: document.getElementById('subtitle'),
+        alertBox: document.getElementById('alert-box'),
+        loginBtn: document.getElementById('login-btn'),
+        generateBtn: document.getElementById('generate-btn'),
+        resultCard: document.getElementById('result-card')
+    };
+
+    function showAlert(message, isError = true) {
+        UI.alertBox.className = 'alert ' + (isError ? 'error' : 'success');
+        UI.alertBox.textContent = message;
+        setTimeout(() => { UI.alertBox.style.display = 'none'; }, 5000);
+    }
+
+    function hideAlert() {
+        UI.alertBox.className = 'alert';
+    }
+
+    function setLoading(btn, isLoading) {
+        if(isLoading) {
+            btn.classList.add('loading');
+            btn.disabled = true;
+        } else {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    // 로그인 폼 처리 (비밀번호 임시 저장)
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pwd = document.getElementById('password').value.trim();
+        if(!pwd) return;
+        
+        savedPassword = pwd;
+        hideAlert();
+        
+        // UI 전환
+        UI.loginSection.style.display = 'none';
+        UI.generatorSection.style.display = 'block';
+        UI.subtitle.textContent = '블로그 꿀댕이 관리자 모드';
+    });
+
+    // 라이센스 발급 요청
+    document.getElementById('generator-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('user_id').value.trim();
+        const duration = parseInt(document.getElementById('duration').value);
+
+        if(!userId || !duration) return;
+
+        setLoading(UI.generateBtn, true);
+        hideAlert();
+        UI.resultCard.classList.remove('active');
+
+        try {
+            // 로컬(Live Server 등)에서 테스트할 때는 8000 포트로, Vercel 배포 시에는 동일 도메인 상대경로 사용
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const apiUrl = isLocal ? 'http://localhost:8000/api/generate-license' : '/api/generate-license';
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    duration: duration,
+                    password: savedPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // 비밀번호가 틀렸을 경우 등 에러 처리
+                if(response.status === 401) {
+                    savedPassword = '';
+                    UI.loginSection.style.display = 'block';
+                    UI.generatorSection.style.display = 'none';
+                    UI.subtitle.textContent = '관리자 인증이 필요합니다';
+                    document.getElementById('password').value = '';
+                }
+                throw new Error(data.detail || '발급 중 오류가 발생했습니다.');
+            }
+
+            // 성공 처리
+            currentLicenseData = data;
+            showAlert('라이센스가 성공적으로 발급되었습니다.', false);
+            
+            // 결과 화면 업데이트
+            document.getElementById('res-user-id').textContent = data.user_id;
+            document.getElementById('res-expiration').textContent = data.expiration_date;
+            document.getElementById('res-message').textContent = data.message;
+            document.getElementById('res-key').textContent = data.license_key;
+            
+            const statusEl = document.getElementById('res-status');
+            if(data.is_valid) {
+                statusEl.textContent = '유효함';
+                statusEl.className = 'status-badge status-valid';
+            } else {
+                statusEl.textContent = '유효하지 않음';
+                statusEl.className = 'status-badge status-invalid';
+            }
+
+            UI.resultCard.classList.add('active');
+
+        } catch (error) {
+            showAlert(error.message);
+        } finally {
+            setLoading(UI.generateBtn, false);
+        }
+    });
+
+    // 파일 다운로드
+    document.getElementById('download-btn').addEventListener('click', () => {
+        if(!currentLicenseData) return;
+        
+        const content = `사용자 ID: ${currentLicenseData.user_id}\n` +
+                        `라이센스 키: ${currentLicenseData.license_key}\n` +
+                        `만료일: ${currentLicenseData.expiration_date}\n` +
+                        `라이센스 상태: ${currentLicenseData.is_valid ? '유효함' : '유효하지 않음'}\n` +
+                        `메시지: ${currentLicenseData.message}`;
+                        
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `license_${currentLicenseData.user_id}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+</script>
+</body>
+</html>
